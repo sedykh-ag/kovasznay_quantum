@@ -50,7 +50,7 @@ class PDEData:
             pred: Predictions output.
 
         Returns:
-            torch.tensor of errors for each component [n_points, n_components]
+            list of errors for each component [n_points, n_components]
         """
         if metric == "rmse":
             metric = lambda input, target: torch.sqrt(torch.nn.functional.mse_loss(input, target))
@@ -61,9 +61,9 @@ class PDEData:
         for component, func in enumerate(self.exact_solution):
             u = func(self.points_test) # exact solution
             v = pred[:, component:component+1] # pred solution
-            err[component] = metric(u, v)
+            err[component] = metric(u, v).item()
         
-        return torch.tensor(err)
+        return err
 
 
     def loss(self, x_pde, x_bc, pred_pde, pred_bc, C=[]):
