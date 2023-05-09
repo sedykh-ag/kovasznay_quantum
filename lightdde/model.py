@@ -20,8 +20,9 @@ class Model:
     ):
         self.data = data
         self.model = model
+        self.save_path = save_path
         
-        if save_path == None:
+        if self.save_path == None:
             timestamp = datetime.today().strftime("%d-%m-%Y--%H-%M-%S")
             self.save_path = os.path.join("models", timestamp)
     
