@@ -4,7 +4,7 @@ import torch.multiprocessing as mp
 from torch.distributed import init_process_group, destroy_process_group 
 
 from essential import *
-
+from qmodels import *
 
 def ddp_setup(rank, world_size):
     os.environ["MASTER_ADDR"] = "localhost"
@@ -24,20 +24,27 @@ def main(rank, world_size):
         exact_solution=[u_func, v_func, p_func],
         num_domain=2601,
         num_bc=400,
-        num_test=10000,
+        num_test=3000,
+        # num_domain=160,
+        # num_bc=32,
+        # num_test=160,
     )
-
+    
+    # net = FNN()
+    net = NetMulAdd(in_dim=2, out_dim=3)
+    
     model = dde.Model(
         rank=rank,
         world_size=world_size,
         data=data,
-        model=FNN(),
-        save_every=10,
-        log_every=5,
+        model=net,
+        save_path="medium_quantum_model_test",
+        log_every=1,
+        save_every=1,
     )
 
     model.compile()
-    model.train(epochs=100)
+    model.train(epochs=10)
 
     ddp_exit()
 
