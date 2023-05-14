@@ -56,12 +56,20 @@ class PDEData:
         return x_test
 
     def _prepare_dataloader(self, dataset):
-        return DataLoader(
-            dataset,
-            batch_size=len(dataset),
-            shuffle=False,
-            sampler=DistributedSampler(dataset, shuffle=False, drop_last=False)
-        )
+        if dist.is_initialized(): # support for distributed training
+            return DataLoader(
+                dataset,
+                batch_size=len(dataset),
+                shuffle=False,
+                sampler=DistributedSampler(dataset, shuffle=False, drop_last=False)
+            )
+        else:  
+             return DataLoader(
+                dataset,
+                batch_size=len(dataset),
+                shuffle=False,
+                drop_last=False,
+            )
 
     def test(self, pred, metric="rmse"):
         """Compares pred solution to exact solution via calculating 'metric' on a uniform point grid.

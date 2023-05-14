@@ -1,0 +1,1 @@
+netmuladd 100 epochs 16 threads: 15114 secs (4.2 hours)

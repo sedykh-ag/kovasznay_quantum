@@ -139,3 +139,23 @@ class NetMulAdd(nn.Module):
         y = torch.hstack(y)
 
         return y
+
+class ClassicNet(nn.Module):
+    def __init__(self, in_dim, out_dim, hidden_dim=10):
+        super().__init__()
+        self.in_dim = in_dim
+        self.out_dim = out_dim
+        self.hidden_dim = hidden_dim
+        
+        self.activation = torch.nn.ReLU
+        self.clayers = nn.ModuleList([CScalar(self.in_dim, self.hidden_dim) for _ in range(self.out_dim)])
+        
+    def forward(self, x):
+        x = x.view(-1, self.in_dim)
+        
+        y = [None] * self.out_dim
+        for i in range(self.out_dim):
+            y[i] = self.clayers[i](x)
+        y = torch.hstack(y)
+        
+        return y

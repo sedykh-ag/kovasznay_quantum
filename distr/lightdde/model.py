@@ -2,6 +2,7 @@ import os
 from datetime import datetime
 
 import torch
+import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
 import pandas as pd
 
@@ -13,16 +14,19 @@ from .utils import timeit
 class Model:
     def __init__(
             self,
-            rank: int,
-            world_size: int,
             data: data.PDEData,
             model: torch.nn.Module,
             save_path: str = None,
             save_every: int = None,
             log_every: int = None,
     ):
-        self.rank = rank
-        self.world_size = world_size
+        self.distributed = dist.is_initialized()
+        if self.distributed:
+            self.rank = dist.get_rank()
+            self.world_size = dist.get_world_size()
+        else: # backward compatibility for print statements in non-distributed training
+            self.rank = 0
+            self.world_size = 1
 
         self.data = data
         self.model = model
@@ -56,9 +60,9 @@ class Model:
     def save_snapshoot(self, epoch):
         assert self.rank == 0, "Tried to save snapshot from non-zero rank!"
         snapshot = {
-            "MODEL_STATE": self.model.state_dict(),
+            "MODEL_STATE": self.model.module.state_dict() if self.distributed else self.model.state_dict(),
             "OPTIMIZER_STATE": self.optimizer.state_dict(),
-            "EPOCHS_RUN": epoch
+            "EPOCHS_RUN": epoch,
         }
         torch.save(snapshot, os.path.join(self.save_path, "ckpt.pt"))
         print(f"Saved checkpoint at {self.save_path}")
@@ -72,9 +76,7 @@ class Model:
         if self.rank == 0:
             print(f"Loaded snapshot at epoch {self.epochs_run}")
 
-    def compile(self, optimizer="adam", lr=0.001, scheduler=None):
-        self.model = DDP(self.model)
- 
+    def compile(self, optimizer="adam", lr=0.001): 
         if optimizer == "adam":
             self.optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
         elif optimizer == "lbfgs":
@@ -85,9 +87,13 @@ class Model:
         # load last checkpoint (if exists)
         if os.path.exists(os.path.join(self.save_path, "ckpt.pt")):
             self.load_snapshot(snapshot_path=os.path.join(self.save_path, "ckpt.pt"))
-
+            
+        if self.distributed:
+            self.model = DDP(self.model)
+        
         # make parent directory (if not exists)
-        os.makedirs(self.save_path, exist_ok=True)
+        if not os.path.exists(self.save_path):
+            os.makedirs(self.save_path)
 
         # make log file with headers
         if not os.path.exists(os.path.join(self.save_path, "log.csv")):
@@ -130,18 +136,19 @@ class Model:
             self.log_every = int(0.01 * epochs) if int(0.01 * epochs) > 1 else 1
         
         if self.rank == 0:
-            print("Started training...")
+            print(f"Started training {self.save_path} ...")
 
         for epoch in range(self.epochs_run+1, epochs+1):
             loss_train = self._run_train_epoch(epoch)
-            loss_test = self._run_test_epoch(epoch)
-            grad.clear() # clear cached gradients
 
             if self.rank == 0 and epoch % self.log_every == 0:
+                loss_test = self._run_test_epoch(epoch)
                 self.log(epoch, loss_train, loss_test)
 
             if self.rank == 0 and epoch % self.save_every == 0:
                 self.save_snapshoot(epoch)
+            
+            grad.clear() # clear cached gradients
                 
         if self.rank == 0:
             print("Finished training")

@@ -24,27 +24,23 @@ def main(rank, world_size):
         exact_solution=[u_func, v_func, p_func],
         num_domain=2601,
         num_bc=400,
-        num_test=3000,
-        # num_domain=160,
-        # num_bc=32,
-        # num_test=160,
+        num_test=5000,
     )
     
-    # net = FNN()
-    net = NetMulAdd(in_dim=2, out_dim=3)
+    # net = ClassicNet(in_dim=2, out_dim=3, hidden_dim=16)
+    # net = NetMulAdd(in_dim=2, out_dim=3)
+    net = FNN()
     
     model = dde.Model(
-        rank=rank,
-        world_size=world_size,
         data=data,
         model=net,
-        save_path="medium_quantum_model_test",
-        log_every=1,
-        save_every=1,
+        save_path="models/FNN_10000e",
+        log_every=100,
+        save_every=100,
     )
 
     model.compile()
-    model.train(epochs=10)
+    model.train(epochs=10000)
 
     ddp_exit()
 
@@ -53,5 +49,5 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--threads", "-t", required=True, type=int, help="How many threads")
     args = parser.parse_args()
-
+    
     mp.spawn(main, args=(args.threads,), nprocs=args.threads)
