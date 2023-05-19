@@ -68,7 +68,7 @@ boundary_condition_right_p = dde.bc.DirichletBC(domain,
 class FNN(torch.nn.Module):
     def __init__(self):
         super().__init__()
-        self.activation = torch.nn.ReLU
+        self.activation = torch.nn.Tanh
         self.net = torch.nn.Sequential(
             torch.nn.Linear(2, 50),
             self.activation(),

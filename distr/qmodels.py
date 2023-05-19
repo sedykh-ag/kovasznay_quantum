@@ -5,7 +5,6 @@ import pennylane as qml
 import numpy as np
 
 
-
 def get_circuit(n_qubits=4, n_depth=4, n_layers=1):
     dev = qml.device("lightning.qubit", wires=n_qubits)
 
@@ -53,12 +52,11 @@ class QScalar(nn.Module):
         return self.net(x)
 
 class CScalar(nn.Module):
-    def __init__(self, in_dim, hidden_dim=10):
+    def __init__(self, in_dim, hidden_dim=10, activation=nn.ReLU):
         super().__init__()
         self.in_dim = in_dim
         self.hidden_dim = hidden_dim
-        
-        self.activation = nn.ReLU
+        self.activation = activation
 
         self.net = nn.Sequential(
             nn.Linear(self.in_dim, self.hidden_dim),
@@ -71,57 +69,17 @@ class CScalar(nn.Module):
     def forward(self, x):
         x = x.view(-1, self.in_dim)
         return self.net(x)
-
-class NetAdd(nn.Module):
-    def __init__(self, in_dim, out_dim):
-        super().__init__()
-        self.in_dim = in_dim
-        self.out_dim = out_dim
-
-        self.qlayers = nn.ModuleList([QScalar(in_dim=self.in_dim) for _ in range(self.out_dim)])
-        self.clayers = nn.ModuleList([CScalar(in_dim=self.in_dim) for _ in range(self.out_dim)])
-        self.lin_out = nn.ModuleList([nn.Linear(2, 1) for _ in range(self.out_dim)])
-
-    def forward(self, x):
-        x = x.view(-1, self.in_dim)
-
-        y = [None] * self.out_dim
-        for i in range(self.out_dim):
-            y[i] = self.lin_out[i](
-                torch.hstack([self.qlayers[i](x * 2 * torch.pi), self.clayers[i](x)])
-            )
-        y = torch.hstack(y)
-
-        return y
-
-class NetMul(nn.Module):
-    def __init__(self, in_dim, out_dim):
-        super().__init__()
-        self.in_dim = in_dim
-        self.out_dim = out_dim
-
-        self.qlayers = nn.ModuleList([QScalar(in_dim=self.in_dim) for _ in range(self.out_dim)])
-        self.clayers = nn.ModuleList([CScalar(in_dim=self.in_dim) for _ in range(self.out_dim)])
-        self.lin_out = nn.ModuleList([nn.Linear(1, 1) for _ in range(self.out_dim)])
-
-    def forward(self, x):
-        x = x.view(-1, self.in_dim)
-
-        y = [None] * self.out_dim
-        for i in range(self.out_dim):
-            y[i] = self.lin_out[i](self.qlayers[i](x * 2 * torch.pi) * self.clayers[i](x))
-        y = torch.hstack(y)
-
-        return y
     
-class NetMulAdd(nn.Module):
-    def __init__(self, in_dim, out_dim):
+class QuantumNet(nn.Module):
+    def __init__(self, in_dim, out_dim, hidden_dim=10, activation=nn.ReLU):
         super().__init__()
         self.in_dim = in_dim
         self.out_dim = out_dim
+        self.hidden_dim = hidden_dim
+        self.activation = activation
 
-        self.qlayers = nn.ModuleList([QScalar(in_dim=self.in_dim) for _ in range(self.out_dim)])
-        self.clayers = nn.ModuleList([CScalar(in_dim=self.in_dim) for _ in range(self.out_dim)])
+        self.qlayers = nn.ModuleList([QScalar(self.in_dim) for _ in range(self.out_dim)])
+        self.clayers = nn.ModuleList([CScalar(self.in_dim, self.hidden_dim, self.activation) for _ in range(self.out_dim)])
         self.lin_out = nn.ModuleList([nn.Linear(3, 1) for _ in range(self.out_dim)])
 
     def forward(self, x):
@@ -141,13 +99,12 @@ class NetMulAdd(nn.Module):
         return y
 
 class ClassicNet(nn.Module):
-    def __init__(self, in_dim, out_dim, hidden_dim=10):
+    def __init__(self, in_dim, out_dim, hidden_dim=16): # does not require activation function
         super().__init__()
         self.in_dim = in_dim
         self.out_dim = out_dim
         self.hidden_dim = hidden_dim
         
-        self.activation = torch.nn.ReLU
         self.clayers = nn.ModuleList([CScalar(self.in_dim, self.hidden_dim) for _ in range(self.out_dim)])
         
     def forward(self, x):

@@ -32,6 +32,7 @@ class Model:
         self.model = model
         self.save_path = save_path
         
+        # create save_path based on current datetime if it was not specified
         if self.save_path == None:
             timestamp = datetime.today().strftime("%d-%m-%Y--%H-%M-%S")
             self.save_path = os.path.join("models", timestamp)
@@ -57,7 +58,7 @@ class Model:
         pd.DataFrame(data, index=[epoch]).to_csv(PATH, mode="a", header=False)
         
 
-    def save_snapshoot(self, epoch):
+    def save_snapshot(self, epoch):
         assert self.rank == 0, "Tried to save snapshot from non-zero rank!"
         snapshot = {
             "MODEL_STATE": self.model.module.state_dict() if self.distributed else self.model.state_dict(),
@@ -92,11 +93,11 @@ class Model:
             self.model = DDP(self.model)
         
         # make parent directory (if not exists)
-        if not os.path.exists(self.save_path):
+        if (self.rank == 0) and (not os.path.exists(self.save_path)):
             os.makedirs(self.save_path)
 
         # make log file with headers
-        if not os.path.exists(os.path.join(self.save_path, "log.csv")):
+        if (self.rank == 0) and (not os.path.exists(os.path.join(self.save_path, "log.csv"))):
             header = pd.DataFrame(columns=["epoch", "loss_train", "u_err", "v_err", "p_err"]).set_index("epoch")
             header.to_csv(os.path.join(self.save_path, "log.csv"), header=True)
 
@@ -141,12 +142,14 @@ class Model:
         for epoch in range(self.epochs_run+1, epochs+1):
             loss_train = self._run_train_epoch(epoch)
 
+            # run validation
             if self.rank == 0 and epoch % self.log_every == 0:
                 loss_test = self._run_test_epoch(epoch)
                 self.log(epoch, loss_train, loss_test)
-
+            
+            # save checkpoint
             if self.rank == 0 and epoch % self.save_every == 0:
-                self.save_snapshoot(epoch)
+                self.save_snapshot(epoch)
             
             grad.clear() # clear cached gradients
                 

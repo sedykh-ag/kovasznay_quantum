@@ -1,5 +1,6 @@
 import os
 
+from torch import nn
 import torch.multiprocessing as mp
 from torch.distributed import init_process_group, destroy_process_group 
 
@@ -28,19 +29,19 @@ def main(rank, world_size):
     )
     
     # net = ClassicNet(in_dim=2, out_dim=3, hidden_dim=16)
-    # net = NetMulAdd(in_dim=2, out_dim=3)
-    net = FNN()
+    net = QuantumNet(in_dim=2, out_dim=3, activation=nn.Tanh)
+    # net = FNN()
     
     model = dde.Model(
         data=data,
         model=net,
-        save_path="models/FNN_10000e",
-        log_every=100,
-        save_every=100,
+        save_path="models/quantum_1000e_tanh",
+        log_every=20, # log_every is test_every
+        save_every=10,
     )
 
     model.compile()
-    model.train(epochs=10000)
+    model.train(epochs=1000)
 
     ddp_exit()
 
