@@ -104,6 +104,10 @@ class Model:
         self._compiled = True
 
     @timeit
+    def forward(self, x):
+        return self.model(x)
+
+    @timeit
     def predict(self, x):
         with torch.no_grad():
             return self.model(x)
