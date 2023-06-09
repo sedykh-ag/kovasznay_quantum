@@ -29,19 +29,19 @@ def main(rank, world_size):
     )
     
     # net = ClassicNet(in_dim=2, out_dim=3, hidden_dim=16)
-    net = QuantumNet(in_dim=2, out_dim=3, activation=nn.ReLU)
+    net = QuantumNet(in_dim=2, out_dim=3, activation=nn.SiLU)
     # net = FNN()
     
     model = dde.Model(
         data=data,
         model=net,
-        save_path="models/quantum_1000e_relu",
-        log_every=20, # log_every is test_every
+        save_path="models/quantum_silu",
+        log_every=20, # log_every implies testing, so frequent logging slows down training
         save_every=10,
     )
 
     model.compile()
-    model.train(epochs=2000)
+    model.train(epochs=1000)
 
     ddp_exit()
 
