@@ -79,7 +79,7 @@ class Model:
 
     def compile(self, optimizer="adam", lr=0.001): 
         if optimizer == "adam":
-            self.optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
+            self.optimizer = torch.optim.Adam(self.model.parameters())
         elif optimizer == "lbfgs":
             raise NotImplementedError("L-BFGS is not implemented yet!")
         else:
@@ -88,6 +88,9 @@ class Model:
         # load last checkpoint (if exists)
         if os.path.exists(os.path.join(self.save_path, "ckpt.pt")):
             self.load_snapshot(snapshot_path=os.path.join(self.save_path, "ckpt.pt"))
+           
+        # assign learning rate to optimizer
+        self.optimizer.param_groups[0]["lr"] = lr
             
         if self.distributed:
             self.model = DDP(self.model)
@@ -138,6 +141,7 @@ class Model:
         
         if self.rank == 0:
             print(f"Started training {self.save_path} ...")
+            print(f"Learning rate is {self.optimizer.param_groups[0]['lr']}")
 
         for epoch in range(self.epochs_run+1, epochs+1):
             loss_train = self._run_train_epoch(epoch)

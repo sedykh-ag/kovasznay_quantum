@@ -35,13 +35,13 @@ def main(rank, world_size):
     model = dde.Model(
         data=data,
         model=net,
-        save_path="models/quantum_silu",
+        save_path="models/quantum_2000e_silu",
         log_every=20, # log_every implies testing, so frequent logging slows down training
         save_every=10,
     )
 
-    model.compile()
-    model.train(epochs=1000)
+    model.compile(lr=0.0001)
+    model.train(epochs=2000)
 
     ddp_exit()
 
