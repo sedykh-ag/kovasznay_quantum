@@ -5,7 +5,7 @@ import pennylane as qml
 import numpy as np
 
 
-def get_circuit(n_qubits=4, n_depth=4, n_layers=1):
+def get_circuit(n_qubits=2, n_depth=1, n_layers=1):
     dev = qml.device("lightning.qubit", wires=n_qubits)
 
     @qml.qnode(dev, interface="torch")
@@ -99,13 +99,14 @@ class QuantumNet(nn.Module):
         return y
 
 class ClassicNet(nn.Module):
-    def __init__(self, in_dim, out_dim, hidden_dim=16): # does not require activation function
+    def __init__(self, in_dim, out_dim, hidden_dim=16, activation=nn.ReLU): # does not require activation function
         super().__init__()
         self.in_dim = in_dim
         self.out_dim = out_dim
         self.hidden_dim = hidden_dim
+        self.activation = activation
         
-        self.clayers = nn.ModuleList([CScalar(self.in_dim, self.hidden_dim) for _ in range(self.out_dim)])
+        self.clayers = nn.ModuleList([CScalar(self.in_dim, self.hidden_dim, self.activation) for _ in range(self.out_dim)])
         
     def forward(self, x):
         x = x.view(-1, self.in_dim)
@@ -115,4 +116,31 @@ class ClassicNet(nn.Module):
             y[i] = self.clayers[i](x)
         y = torch.hstack(y)
         
+        return y
+    
+class ClassicNet2(nn.Module):
+    def __init__(self, in_dim, out_dim, hidden_dim=20, activation=nn.ReLU): # does not require activation function
+        super().__init__()
+        self.in_dim = in_dim
+        self.out_dim = out_dim
+        self.hidden_dim = hidden_dim
+        self.activation = activation
+        
+        self.clayers1 = nn.ModuleList([CScalar(self.in_dim, self.hidden_dim, self.activation) for _ in range(self.out_dim)])
+        self.clayers2 = nn.ModuleList([CScalar(self.in_dim, self.hidden_dim, self.activation) for _ in range(self.out_dim)])
+        self.lin_out = nn.ModuleList([nn.Linear(2, 1) for _ in range(self.out_dim)])
+        
+    def forward(self, x):
+        x = x.view(-1, self.in_dim)
+        
+        y = [None] * self.out_dim
+        for i in range(self.out_dim):
+            y[i] = self.lin_out[i](
+                torch.hstack([
+                    self.clayers1[i](x),
+                    self.clayers2[i](x),
+                ])
+            )
+        y = torch.hstack(y)
+
         return y
