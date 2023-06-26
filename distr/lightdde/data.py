@@ -43,12 +43,6 @@ class PDEData:
     def get_points_train(self):
         x_pde = next(iter(self.dl_pde))[0]
         x_bc = next(iter(self.dl_bc))[0]
-
-        # rank = dist.get_rank()
-        # print(f"DEBUG: [CPU {rank}] x_pde = ", x_pde)
-        # print(f"DEBUG: [CPU {rank}] len(x_pde) = ", len(x_pde))
-        # assert False
-
         return x_pde, x_bc
     
     def get_points_test(self):

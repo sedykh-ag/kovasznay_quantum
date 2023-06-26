@@ -27,7 +27,7 @@ def main(rank, world_size):
         num_bc=400,
         num_test=5000,
     )
-    
+
     net = ClassicNet2(in_dim=2, out_dim=3, hidden_dim=12, activation=nn.SiLU)
     # net = QuantumNet(in_dim=2, out_dim=3, activation=nn.SiLU)
     # net = FNN()
@@ -42,7 +42,7 @@ def main(rank, world_size):
 
     model.compile()
     model.train(epochs=1000)
-
+    
     ddp_exit()
 
 if __name__ == "__main__":
